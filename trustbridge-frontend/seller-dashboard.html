@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Seller Dashboard - TrustBridge</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .dashboard-header {
+      background: var(--surface-color);
+      padding: 2rem 0;
+      border-bottom: 1px solid #E0E0E0;
+      margin-bottom: 2rem;
+    }
+    .tabs {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      border-bottom: 2px solid #E0E0E0;
+      padding-bottom: 0.5rem;
+    }
+    .tab {
+      padding: 0.5rem 1rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      position: relative;
+    }
+    .tab.active {
+      color: #1B5E20;
+    }
+    .tab.active::after {
+      content: '';
+      position: absolute;
+      bottom: -10px;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      background: var(--primary-gradient);
+      border-radius: 3px 3px 0 0;
+    }
+    .status-badge {
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: white;
+      text-transform: capitalize;
+    }
+    .status-created { background: var(--status-created); }
+    .status-funded { background: var(--status-funded); }
+    .status-shipped { background: var(--status-shipped); }
+    .status-delivered { background: var(--status-delivered); }
+    .status-completed { background: var(--status-completed); }
+    .status-disputed { background: var(--status-disputed); }
+
+    .tx-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 0;
+      border-bottom: 1px solid #F0F0F0;
+    }
+    .tx-item:last-child {
+      border-bottom: none;
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="container">
+      <div class="logo">TrustBridge</div>
+      <div class="flex items-center gap-4">
+        <span class="text-muted">Hello, Seller</span>
+        <a href="#" class="btn btn-outline logout-btn">Logout</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="dashboard-header">
+    <div class="container flex justify-between items-center">
+      <div>
+        <h1>My Sales</h1>
+        <p class="text-muted">Manage your incoming orders and shipments</p>
+      </div>
+      <div class="glass-panel" style="padding: 1rem; border-radius: 8px;">
+        <span class="text-muted" style="font-size:0.85rem;">Pending Payouts</span>
+        <div style="font-weight:bold; color:#1B5E20; font-size:1.2rem;" id="pending-payouts">₦0.00</div>
+      </div>
+    </div>
+  </div>
+
+  <main class="container main-content">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('active')">Active Orders</div>
+      <div class="tab" onclick="switchTab('history')">History</div>
+    </div>
+
+    <div class="card" id="transactions-container">
+      <!-- Transactions injected here by JS -->
+    </div>
+  </main>
+
+  <script src="utils.js"></script>
+  <script src="app.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      window.tbApp.checkAuth('seller');
+      renderTransactions('active');
+      calculatePendingPayouts();
+    });
+
+    let currentTab = 'active';
+
+    function switchTab(tab) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      event.target.classList.add('active');
+      currentTab = tab;
+      renderTransactions(tab);
+    }
+
+    function renderTransactions(tab) {
+      const state = window.tbUtils.getAppState();
+      const container = document.getElementById('transactions-container');
+
+      const filtered = state.transactions.filter(t => {
+        const isActive = !['completed', 'disputed'].includes(t.status);
+        return tab === 'active' ? isActive : !isActive;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<p class="text-center text-muted py-4">No ${tab} transactions found.</p>`;
+        return;
+      }
+
+      container.innerHTML = filtered.map(t => `
+        <div class="tx-item">
+          <div>
+            <h4 style="margin:0;color:#121212;">${t.title}</h4>
+            <div class="text-muted" style="font-size:0.85rem;margin-top:0.25rem;">
+              Buyer: ${t.buyer} • ${window.tbUtils.formatNaira(t.price)}
+            </div>
+          </div>
+          <div class="flex items-center gap-4">
+            <span class="status-badge status-${t.status}">${t.status}</span>
+            <a href="transaction.html?id=${t.id}" class="btn btn-outline" style="padding: 0.4rem 1rem;">View</a>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function calculatePendingPayouts() {
+      const state = window.tbUtils.getAppState();
+      // Sum price of transactions that are funded, shipped, or delivered
+      const pending = state.transactions.reduce((sum, t) => {
+        if (['funded', 'shipped', 'delivered'].includes(t.status)) {
+          return sum + t.price;
+        }
+        return sum;
+      }, 0);
+      document.getElementById('pending-payouts').textContent = window.tbUtils.formatNaira(pending);
+    }
+  </script>
+</body>
+</html>

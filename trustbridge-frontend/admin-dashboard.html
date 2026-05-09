@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - TrustBridge</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body { background-color: #ECEFF1; }
+    .dashboard-header {
+      background: #263238; /* Darker header for Admin */
+      color: white;
+      padding: 2rem 0;
+      margin-bottom: 2rem;
+    }
+    .status-badge {
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: white;
+      text-transform: capitalize;
+    }
+    .status-disputed { background: var(--status-disputed); }
+    .status-completed { background: var(--status-completed); }
+
+    .tx-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.5rem 0;
+      border-bottom: 1px solid #F0F0F0;
+    }
+    .tx-item:last-child { border-bottom: none; }
+
+    .admin-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .btn-resolve-refund { background: #E53935; color: white; border: none; }
+    .btn-resolve-payout { background: #43A047; color: white; border: none; }
+    .btn-resolve-refund:hover { background: #C62828; }
+    .btn-resolve-payout:hover { background: #2E7D32; }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar" style="background:#37474F;">
+    <div class="container flex justify-between items-center">
+      <div class="logo" style="background:none;color:white;-webkit-text-fill-color:white;">TrustBridge Admin</div>
+      <div class="flex items-center gap-4">
+        <span style="color:#B0BEC5;">Super Admin</span>
+        <a href="#" class="btn btn-outline logout-btn" style="border-color:white;color:white;">Logout</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="dashboard-header">
+    <div class="container">
+      <h1 style="color:white;">Dispute Resolution Center</h1>
+      <p style="color:#B0BEC5;">Review and resolve escalated transactions</p>
+    </div>
+  </div>
+
+  <main class="container main-content">
+    <div class="card">
+      <h2 style="margin-bottom: 1.5rem; border-bottom: 1px solid #eee; padding-bottom: 0.5rem;">Active Disputes</h2>
+      <div id="disputes-container">
+        <!-- Disputed txns injected here -->
+      </div>
+    </div>
+
+    <div class="card mt-4">
+      <h2 style="margin-bottom: 1.5rem; border-bottom: 1px solid #eee; padding-bottom: 0.5rem;">All Other Transactions</h2>
+      <div id="all-container">
+        <!-- Other txns injected here -->
+      </div>
+    </div>
+  </main>
+
+  <script src="utils.js"></script>
+  <script src="app.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      window.tbApp.checkAuth('admin');
+      renderAdminView();
+    });
+
+    function renderAdminView() {
+      const state = window.tbUtils.getAppState();
+      const disputesContainer = document.getElementById('disputes-container');
+      const allContainer = document.getElementById('all-container');
+
+      const disputes = state.transactions.filter(t => t.status === 'disputed');
+      const others = state.transactions.filter(t => t.status !== 'disputed');
+
+      if (disputes.length === 0) {
+        disputesContainer.innerHTML = `<p class="text-center text-muted py-4">No active disputes to resolve. 🎉</p>`;
+      } else {
+        disputesContainer.innerHTML = disputes.map(t => `
+          <div class="tx-item" style="background: #FFF3E0; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; border: 1px solid #FFCC80;">
+            <div>
+              <h4 style="margin:0;color:#E65100;">${t.id} - ${t.title}</h4>
+              <div class="text-muted" style="font-size:0.85rem;margin-top:0.25rem;">
+                Buyer: ${t.buyer} | Seller: ${t.seller} | Value: ${window.tbUtils.formatNaira(t.price)}
+              </div>
+              <span class="status-badge status-disputed mt-4" style="display:inline-block;">Disputed</span>
+            </div>
+            <div class="admin-actions flex-col">
+              <button class="btn btn-resolve-payout" onclick="resolveDispute('${t.id}', 'completed')">Resolve: Payout Seller</button>
+              <button class="btn btn-resolve-refund" onclick="resolveDispute('${t.id}', 'created')">Resolve: Refund Buyer</button>
+              <a href="transaction.html?id=${t.id}" class="btn btn-outline" style="text-align:center;margin-top:0.5rem;">View Details</a>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      if (others.length === 0) {
+        allContainer.innerHTML = `<p class="text-center text-muted py-4">No other transactions found.</p>`;
+      } else {
+        allContainer.innerHTML = others.map(t => `
+          <div class="tx-item">
+            <div>
+              <h4 style="margin:0;color:#121212;">${t.id} - ${t.title}</h4>
+              <div class="text-muted" style="font-size:0.85rem;margin-top:0.25rem;">
+                ${window.tbUtils.formatNaira(t.price)} | Status: <span style="font-weight:bold;">${t.status.toUpperCase()}</span>
+              </div>
+            </div>
+            <a href="transaction.html?id=${t.id}" class="btn btn-outline" style="padding: 0.4rem 1rem;">View</a>
+          </div>
+        `).join('');
+      }
+    }
+
+    function resolveDispute(id, outcomeStatus) {
+      if (!confirm(`Are you sure you want to resolve this dispute as: ${outcomeStatus.toUpperCase()}?`)) return;
+
+      const success = window.tbUtils.updateTransactionStatus(id, outcomeStatus);
+      if (success) {
+        window.tbApp.showToast(`Dispute resolved. Status updated to ${outcomeStatus}.`, 'success');
+        renderAdminView();
+      } else {
+        window.tbApp.showToast('Failed to resolve dispute.', 'error');
+      }
+    }
+  </script>
+</body>
+</html>

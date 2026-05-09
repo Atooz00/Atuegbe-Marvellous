@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - TrustBridge</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body {
+      background: var(--primary-gradient);
+      justify-content: center;
+      align-items: center;
+    }
+    .auth-container {
+      width: 100%;
+      max-width: 400px;
+      padding: 1rem;
+    }
+    .auth-card {
+      text-align: center;
+      padding: 2.5rem;
+    }
+    .logo {
+      font-size: 2rem;
+      margin-bottom: 2rem;
+      display: inline-block;
+    }
+    .role-btn {
+      margin-bottom: 1rem;
+    }
+    .back-link {
+      display: inline-block;
+      margin-top: 1.5rem;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+    .back-link:hover {
+      color: #1B5E20;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="auth-container">
+    <div class="glass-panel auth-card">
+      <div class="logo">TrustBridge</div>
+      <p style="margin-bottom: 2rem;" class="text-muted">Select a role to mock login</p>
+
+      <button class="btn btn-outline btn-block role-btn" onclick="loginAs('buyer')">
+        👤 Login as Buyer
+      </button>
+      <button class="btn btn-outline btn-block role-btn" onclick="loginAs('seller')">
+        🏪 Login as Seller
+      </button>
+      <button class="btn btn-primary btn-block role-btn" style="margin-top: 1rem;" onclick="loginAs('admin')">
+        🛡️ Login as Admin
+      </button>
+
+      <a href="index.html" class="back-link">← Back to Home</a>
+    </div>
+  </div>
+
+  <script src="utils.js"></script>
+  <script src="app.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      window.tbApp.checkAuth();
+    });
+
+    function loginAs(role) {
+      const state = window.tbUtils.getAppState();
+      state.userRole = role;
+      window.tbUtils.saveAppState(state);
+
+      window.tbApp.showToast(`Logged in successfully as ${role.toUpperCase()}`);
+
+      // Short delay to show toast before redirect
+      setTimeout(() => {
+        window.location.href = `${role}-dashboard.html`;
+      }, 500);
+    }
+  </script>
+</body>
+</html>

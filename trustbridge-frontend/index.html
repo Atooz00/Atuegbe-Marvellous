@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TrustBridge - P2P Escrow</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    /* Specific styles for landing page */
+    .hero {
+      background: var(--primary-gradient);
+      color: white;
+      padding: 6rem 1rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Subtle gradient mesh background effect */
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -50%; left: -50%; width: 200%; height: 200%;
+      background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.1) 0%, transparent 60%);
+      animation: rotate 20s linear infinite;
+      z-index: 0;
+    }
+
+    @keyframes rotate {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 1;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .hero h1 {
+      font-size: 3rem;
+      margin-bottom: 1.5rem;
+      color: white;
+    }
+
+    .hero p {
+      font-size: 1.25rem;
+      margin-bottom: 2rem;
+      opacity: 0.9;
+    }
+
+    .how-it-works {
+      padding: 4rem 1rem;
+      text-align: center;
+    }
+
+    .step-card {
+      padding: 2rem;
+      text-align: center;
+    }
+
+    .step-icon {
+      width: 80px;
+      height: 80px;
+      background: var(--background-light);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1.5rem;
+      font-size: 2rem;
+      color: #1B5E20;
+      box-shadow: var(--shadow-subtle);
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="container">
+      <div class="logo">TrustBridge</div>
+      <div>
+        <a href="auth.html" class="btn btn-outline" style="margin-right: 0.5rem;">Login</a>
+        <a href="auth.html" class="btn btn-primary">Get Started</a>
+      </div>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="hero-content">
+      <h1>Secure Your P2P Transactions</h1>
+      <p>The ultimate escrow layer for Instagram and WhatsApp shopping. We hold the funds until you receive the goods.</p>
+      <a href="auth.html" class="btn btn-accent pulse-anim" style="font-size: 1.2rem; padding: 1rem 2rem;">Start Transacting Securely</a>
+    </div>
+  </header>
+
+  <section class="how-it-works container">
+    <h2 style="margin-bottom: 3rem; font-size: 2rem;">How It Works</h2>
+    <div class="grid grid-cols-3">
+      <div class="card step-card">
+        <div class="step-icon">🔒</div>
+        <h3>1. Agree & Fund</h3>
+        <p class="text-muted">Buyer and seller agree on terms. Buyer funds the secure TrustBridge escrow.</p>
+      </div>
+      <div class="card step-card">
+        <div class="step-icon">📦</div>
+        <h3>2. Ship & Inspect</h3>
+        <p class="text-muted">Seller ships the item. Buyer has an inspection window to verify the goods.</p>
+      </div>
+      <div class="card step-card">
+        <div class="step-icon">💸</div>
+        <h3>3. Payout</h3>
+        <p class="text-muted">Once approved, funds are instantly released to the seller. No scams, no worries.</p>
+      </div>
+    </div>
+  </section>
+
+  <script src="utils.js"></script>
+  <script src="app.js"></script>
+  <script>
+    // Automatically check if user is logged in
+    document.addEventListener('DOMContentLoaded', () => {
+      window.tbApp.checkAuth();
+    });
+  </script>
+</body>
+</html>

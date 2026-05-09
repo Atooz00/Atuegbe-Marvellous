@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Transaction Portal - TrustBridge</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .portal-header {
+      background: var(--surface-color);
+      padding: 2rem 0;
+      border-bottom: 1px solid #E0E0E0;
+    }
+
+    /* Timeline Styles */
+    .timeline {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 3rem 0;
+      position: relative;
+    }
+    .timeline::before {
+      content: '';
+      position: absolute;
+      top: 50%; left: 0; width: 100%; height: 4px;
+      background: #E0E0E0;
+      z-index: 1;
+      transform: translateY(-50%);
+    }
+    .timeline-progress {
+      position: absolute;
+      top: 50%; left: 0; height: 4px;
+      background: var(--primary-gradient);
+      z-index: 2;
+      transform: translateY(-50%);
+      transition: width 0.5s ease;
+      width: 0%;
+    }
+    .timeline-step {
+      position: relative;
+      z-index: 3;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .step-circle {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: white;
+      border: 4px solid #E0E0E0;
+      display: flex; justify-content: center; align-items: center;
+      transition: all 0.3s ease;
+    }
+    .step-label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      position: absolute;
+      top: 40px;
+      white-space: nowrap;
+    }
+    .timeline-step.active .step-circle {
+      border-color: #2E7D32;
+      background: #2E7D32;
+      color: white;
+    }
+    .timeline-step.active .step-label { color: #2E7D32; }
+
+    .action-panel {
+      background: #F9FAFB;
+      border-radius: 12px;
+      padding: 2rem;
+      text-align: center;
+      margin-top: 2rem;
+      border: 1px dashed #B0BEC5;
+    }
+
+    .countdown {
+      font-size: 2rem;
+      font-weight: 800;
+      color: #D32F2F;
+      font-family: monospace;
+      margin: 1rem 0;
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="container flex justify-between items-center">
+      <div class="logo">TrustBridge</div>
+      <a href="#" id="back-btn" class="btn btn-outline" style="border:none;">← Back to Dashboard</a>
+    </div>
+  </nav>
+
+  <div class="portal-header">
+    <div class="container flex justify-between items-center">
+      <div>
+        <span class="text-muted" style="font-size: 0.9rem;" id="tx-id">TB-XXXX</span>
+        <h1 id="tx-title" style="margin-bottom:0;">Loading...</h1>
+      </div>
+      <div style="text-align: right;">
+        <span class="text-muted" style="display:block; font-size: 0.9rem;">Escrow Value</span>
+        <h2 id="tx-price" style="margin:0; color:#1B5E20;">₦0.00</h2>
+      </div>
+    </div>
+  </div>
+
+  <main class="container main-content">
+    <div class="card">
+      <h3 style="margin-bottom: 2rem; text-align: center;">Transaction Status</h3>
+
+      <!-- Visual Timeline -->
+      <div class="timeline" id="timeline">
+        <div class="timeline-progress" id="progress-bar"></div>
+        <div class="timeline-step" data-step="created">
+          <div class="step-circle">1</div>
+          <div class="step-label">Created</div>
+        </div>
+        <div class="timeline-step" data-step="funded">
+          <div class="step-circle">2</div>
+          <div class="step-label">Funded</div>
+        </div>
+        <div class="timeline-step" data-step="shipped">
+          <div class="step-circle">3</div>
+          <div class="step-label">Shipped</div>
+        </div>
+        <div class="timeline-step" data-step="delivered">
+          <div class="step-circle">4</div>
+          <div class="step-label">Delivered</div>
+        </div>
+        <div class="timeline-step" data-step="completed">
+          <div class="step-circle">✓</div>
+          <div class="step-label">Completed</div>
+        </div>
+      </div>
+
+      <!-- Action Panel (Dynamic based on role & status) -->
+      <div class="action-panel" id="action-panel">
+        <!-- Actions injected via JS -->
+      </div>
+    </div>
+  </main>
+
+  <script src="utils.js"></script>
+  <script src="app.js"></script>
+  <script>
+    let currentTxId = null;
+    let countdownInterval = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const userRole = window.tbApp.checkAuth();
+      if (!userRole) return;
+
+      document.getElementById('back-btn').href = `${userRole}-dashboard.html`;
+
+      const urlParams = new URLSearchParams(window.location.search);
+      currentTxId = urlParams.get('id');
+      const isPaymentSuccess = urlParams.get('payment') === 'success';
+
+      if (isPaymentSuccess) {
+        window.tbApp.showToast('Funds secured in escrow successfully!', 'success');
+        // Clean URL
+        window.history.replaceState({}, document.title, window.location.pathname + `?id=${currentTxId}`);
+      }
+
+      if (!currentTxId) {
+        window.location.href = `${userRole}-dashboard.html`;
+        return;
+      }
+
+      renderPortal();
+    });
+
+    function renderPortal() {
+      const tx = window.tbUtils.getTransaction(currentTxId);
+      const role = window.tbUtils.getAppState().userRole;
+
+      if (!tx) {
+        document.body.innerHTML = '<h2>Transaction not found</h2>';
+        return;
+      }
+
+      // Populate Header
+      document.getElementById('tx-id').textContent = tx.id;
+      document.getElementById('tx-title').textContent = tx.title;
+      document.getElementById('tx-price').textContent = window.tbUtils.formatNaira(tx.price);
+
+      // Update Timeline
+      updateTimeline(tx.status);
+
+      // Render Action Panel
+      renderActionPanel(tx, role);
+    }
+
+    function updateTimeline(status) {
+      if (status === 'disputed') {
+        document.getElementById('timeline').style.opacity = '0.5';
+        return;
+      }
+
+      const stages = ['created', 'funded', 'shipped', 'delivered', 'completed'];
+      const currentIndex = stages.indexOf(status);
+
+      const steps = document.querySelectorAll('.timeline-step');
+      steps.forEach((step, index) => {
+        if (index <= currentIndex) {
+          step.classList.add('active');
+          if(index < currentIndex) step.querySelector('.step-circle').innerHTML = '✓';
+        } else {
+          step.classList.remove('active');
+          step.querySelector('.step-circle').innerHTML = index + 1;
+        }
+      });
+
+      const progress = document.getElementById('progress-bar');
+      // Calculate width percentage: 0%, 25%, 50%, 75%, 100%
+      progress.style.width = `${(currentIndex / (stages.length - 1)) * 100}%`;
+    }
+
+    function renderActionPanel(tx, role) {
+      const panel = document.getElementById('action-panel');
+      if (countdownInterval) clearInterval(countdownInterval);
+
+      if (tx.status === 'disputed') {
+        panel.innerHTML = `
+          <h3 style="color:#D32F2F;">Transaction Disputed</h3>
+          <p>TrustBridge Admin is reviewing the case. Funds are frozen.</p>
+        `;
+        return;
+      }
+
+      let content = '';
+
+      if (tx.status === 'created') {
+        if (role === 'buyer') {
+          content = `
+            <h3>Fund this transaction</h3>
+            <p class="text-muted mb-4">Secure the funds in escrow so the seller can ship.</p>
+            <button class="btn btn-primary pulse-anim" onclick="window.location.href='payment.html?id=${tx.id}'">Proceed to Payment</button>
+          `;
+        } else if (role === 'seller') {
+          content = `<p class="text-muted">Waiting for buyer to fund the escrow.</p>`;
+        } else {
+          content = `<p class="text-muted">Pending funding.</p>`;
+        }
+      }
+      else if (tx.status === 'funded') {
+        if (role === 'seller') {
+          content = `
+            <h3>Funds Secured in Escrow 🔒</h3>
+            <p class="text-muted mb-4">The buyer has paid. Please ship the item and mark it as shipped.</p>
+            <button class="btn btn-primary" onclick="updateStatus('shipped')">Mark as Shipped</button>
+          `;
+        } else {
+          content = `
+            <h3>Funds Secured 🔒</h3>
+            <p class="text-muted">Waiting for seller to ship the item.</p>
+          `;
+        }
+      }
+      else if (tx.status === 'shipped') {
+        if (role === 'seller') {
+          content = `
+            <h3>Item Shipped 📦</h3>
+            <p class="text-muted mb-4">Have the goods been delivered to the buyer?</p>
+            <button class="btn btn-accent" onclick="updateStatus('delivered')">Mark as Delivered</button>
+          `;
+        } else {
+          content = `
+            <h3>Item Shipped 📦</h3>
+            <p class="text-muted">The seller has shipped the item. Await delivery.</p>
+          `;
+        }
+      }
+      else if (tx.status === 'delivered') {
+        // Setup 1-minute countdown (mocking 48 hours)
+        const deliveryTime = new Date(tx.deliveredAt).getTime();
+        const expireTime = deliveryTime + (60 * 1000); // 1 minute from delivery
+
+        content = `
+          <h3>Inspection Window Active ⏱️</h3>
+          <p class="text-muted">Funds will be auto-released when the timer hits zero, unless a dispute is raised.</p>
+          <div class="countdown" id="timer">01:00</div>
+        `;
+
+        if (role === 'buyer') {
+          content += `
+            <div class="flex justify-center gap-4 mt-4">
+              <button class="btn btn-primary" onclick="updateStatus('completed')">Confirm Receipt & Release Funds</button>
+              <button class="btn btn-outline" style="color:#D32F2F;border-color:#D32F2F;" onclick="updateStatus('disputed')">Raise Dispute</button>
+            </div>
+          `;
+        }
+
+        panel.innerHTML = content;
+
+        // Timer Logic
+        countdownInterval = setInterval(() => {
+          const now = new Date().getTime();
+          const distance = expireTime - now;
+
+          if (distance < 0) {
+            clearInterval(countdownInterval);
+            document.getElementById('timer').textContent = "00:00";
+            // Auto release logic
+            if(role === 'admin' || role === 'buyer' || role === 'seller') {
+               updateStatus('completed', true);
+            }
+          } else {
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+            document.getElementById('timer').textContent =
+              `00:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+          }
+        }, 1000);
+
+        return; // Early return because we injected HTML manually above
+      }
+      else if (tx.status === 'completed') {
+        content = `
+          <h3 style="color:#2E7D32;">Transaction Completed 🎉</h3>
+          <p class="text-muted">Funds have been released to the seller.</p>
+        `;
+      }
+
+      panel.innerHTML = content;
+    }
+
+    function updateStatus(newStatus, isAuto = false) {
+      const success = window.tbUtils.updateTransactionStatus(currentTxId, newStatus);
+      if (success) {
+        let msg = `Status updated to ${newStatus}`;
+        if (isAuto && newStatus === 'completed') msg = "Inspection window expired. Funds auto-released!";
+        if (newStatus === 'disputed') msg = "Dispute raised. Admin notified.";
+
+        window.tbApp.showToast(msg, newStatus === 'disputed' ? 'error' : 'success');
+        renderPortal(); // Re-render the portal with new state
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Buyer Dashboard - TrustBridge</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .dashboard-header {
+      background: var(--surface-color);
+      padding: 2rem 0;
+      border-bottom: 1px solid #E0E0E0;
+      margin-bottom: 2rem;
+    }
+    .tabs {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      border-bottom: 2px solid #E0E0E0;
+      padding-bottom: 0.5rem;
+    }
+    .tab {
+      padding: 0.5rem 1rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      position: relative;
+    }
+    .tab.active {
+      color: #1B5E20;
+    }
+    .tab.active::after {
+      content: '';
+      position: absolute;
+      bottom: -10px;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      background: var(--primary-gradient);
+      border-radius: 3px 3px 0 0;
+    }
+    .status-badge {
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: white;
+      text-transform: capitalize;
+    }
+    .status-created { background: var(--status-created); }
+    .status-funded { background: var(--status-funded); }
+    .status-shipped { background: var(--status-shipped); }
+    .status-delivered { background: var(--status-delivered); }
+    .status-completed { background: var(--status-completed); }
+    .status-disputed { background: var(--status-disputed); }
+
+    .tx-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 0;
+      border-bottom: 1px solid #F0F0F0;
+    }
+    .tx-item:last-child {
+      border-bottom: none;
+    }
+
+    /* Modal for creating transaction */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5);
+      backdrop-filter: blur(5px);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    .modal-overlay.active {
+      display: flex;
+    }
+    .modal {
+      background: white;
+      padding: 2rem;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 500px;
+      box-shadow: var(--shadow-hover);
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="container">
+      <div class="logo">TrustBridge</div>
+      <div class="flex items-center gap-4">
+        <span class="text-muted">Hello, Buyer</span>
+        <a href="#" class="btn btn-outline logout-btn">Logout</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="dashboard-header">
+    <div class="container flex justify-between items-center">
+      <div>
+        <h1>My Purchases</h1>
+        <p class="text-muted">Manage your secure transactions</p>
+      </div>
+      <button class="btn btn-primary" onclick="openCreateModal()">+ New Transaction</button>
+    </div>
+  </div>
+
+  <main class="container main-content">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('active')">Active Orders</div>
+      <div class="tab" onclick="switchTab('history')">History</div>
+    </div>
+
+    <div class="card" id="transactions-container">
+      <!-- Transactions injected here by JS -->
+    </div>
+  </main>
+
+  <!-- Create Transaction Modal -->
+  <div class="modal-overlay" id="create-modal">
+    <div class="modal">
+      <div class="flex justify-between items-center mb-4">
+        <h2>Create Escrow</h2>
+        <button style="background:none;border:none;font-size:1.5rem;cursor:pointer;" onclick="closeCreateModal()">&times;</button>
+      </div>
+      <form id="create-form">
+        <div class="form-group">
+          <label class="form-label">Item Title</label>
+          <input type="text" id="item-title" class="form-input" required placeholder="e.g., iPhone 13 Pro">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Seller Username</label>
+          <input type="text" id="seller-username" class="form-input" required placeholder="Seller123">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Price (₦)</label>
+          <input type="number" id="item-price" class="form-input" required min="1000" placeholder="Minimum ₦1,000">
+          <small id="price-error" style="color: red; display: none;">Price must be at least ₦1,000</small>
+        </div>
+        <button type="submit" class="btn btn-accent btn-block mt-4">Create Transaction</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="utils.js"></script>
+  <script src="app.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      window.tbApp.checkAuth('buyer');
+      renderTransactions('active');
+    });
+
+    let currentTab = 'active';
+
+    function switchTab(tab) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      event.target.classList.add('active');
+      currentTab = tab;
+      renderTransactions(tab);
+    }
+
+    function renderTransactions(tab) {
+      const state = window.tbUtils.getAppState();
+      const container = document.getElementById('transactions-container');
+
+      const filtered = state.transactions.filter(t => {
+        const isActive = !['completed', 'disputed'].includes(t.status);
+        return tab === 'active' ? isActive : !isActive;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<p class="text-center text-muted py-4">No ${tab} transactions found.</p>`;
+        return;
+      }
+
+      container.innerHTML = filtered.map(t => `
+        <div class="tx-item">
+          <div>
+            <h4 style="margin:0;color:#121212;">${t.title}</h4>
+            <div class="text-muted" style="font-size:0.85rem;margin-top:0.25rem;">
+              Seller: ${t.seller} • ${window.tbUtils.formatNaira(t.price)}
+            </div>
+          </div>
+          <div class="flex items-center gap-4">
+            <span class="status-badge status-${t.status}">${t.status}</span>
+            <a href="transaction.html?id=${t.id}" class="btn btn-outline" style="padding: 0.4rem 1rem;">View</a>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Modal Logic
+    function openCreateModal() { document.getElementById('create-modal').classList.add('active'); }
+    function closeCreateModal() { document.getElementById('create-modal').classList.remove('active'); }
+
+    document.getElementById('item-price').addEventListener('input', (e) => {
+      const val = e.target.value;
+      const err = document.getElementById('price-error');
+      if (val && Number(val) < 1000) err.style.display = 'block';
+      else err.style.display = 'none';
+    });
+
+    document.getElementById('create-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const price = Number(document.getElementById('item-price').value);
+      if (price < 1000) {
+        window.tbApp.showToast('Price must be at least ₦1,000', 'error');
+        return;
+      }
+
+      const state = window.tbUtils.getAppState();
+      const newTx = {
+        id: 'TB-' + Math.floor(Math.random() * 9000 + 1000),
+        title: document.getElementById('item-title').value,
+        seller: document.getElementById('seller-username').value,
+        price: price,
+        status: 'created',
+        buyer: 'Buyer123',
+        createdAt: new Date().toISOString(),
+        deliveredAt: null
+      };
+
+      state.transactions.unshift(newTx);
+      window.tbUtils.saveAppState(state);
+
+      closeCreateModal();
+      document.getElementById('create-form').reset();
+      window.tbApp.showToast('Transaction created successfully!');
+
+      if (currentTab === 'active') renderTransactions('active');
+    });
+  </script>
+</body>
+</html>
